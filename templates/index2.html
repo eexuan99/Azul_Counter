@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flask Buttons</title>
+    <style>
+        body {
+            background-color: #ffffff; /* Dark gray color */
+            /*color: white; !* Change text color to white for better contrast *!*/
+        }
+        .button-grid {
+            display: grid;
+            grid-template-rows: repeat(5, 1fr);
+            grid-gap: 10px;
+            grid-column-gap: 50px; /* Set the gap between columns (adjust as needed) */
+        }
+        .button {
+            flex: 1;
+            height: 123px;
+            width: 123px;
+            /*background-color: #f0f0f0;*/
+            border: 1px solid #ccc;
+            text-align: center;
+            /*line-height: 50px;*/
+            text-decoration: none;
+            color: #ffffff;
+            font-weight: bold;
+            padding: 0; /* Reset padding to zero */
+            margin: 0; /* Reset margin to zero */
+            transition: transform 0.2s; /* Add a smooth transition effect */
+        }
+        .button:hover {
+            transform: scale(1.05); /* Increase the size by 10% on hover */
+        }
+        .button-image {
+            background-size: cover;
+            width: 100%;
+            height: 100%;
+            height: 100%;
+        }
+        .button img {
+            height: 125px;
+            width: 125px;
+            padding: 0; /* Reset padding to zero */
+            margin: 0; /* Reset margin to zero */
+            /*object-fit: cover;*/
+        }
+        .clicked-image {
+            display: none; /* Hide the clicked image by default */
+        }
+        .button.disabled, .button.disabled:hover {
+            transform: scale(1); /* Ensures the button does not scale on hover */
+        }
+
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div id="buttons-container" class="button-grid">
+        {% for row in range(5) %}
+            <div class="row-buttons">
+                {% for col in range(5) %}
+                    {% set button_index = row * 5 + col %}
+                    {% set image_filename = 'tiles/' + button_array[button_index].image %}
+<!--                    <button class="button {% if button_array[button_index] == 1 %}highlight{% endif %}" data-row="{{ row }}" data-col="{{ col }}">Button {{ button_index + 1 }}</button>-->
+                    <button onclick="buttonClicked(this)" class="button" data-row="{{ row }}" data-col="{{ col }}", data-button_index="{{ button_index }}">
+                        <img class="original-image" src="{{ url_for('static', filename='tiles/' + button_array[button_index].image) }}" alt="Original Image">
+                        <img class="clicked-image" src="{{ url_for('static', filename='tiles/' + button_array[button_index].clicked_image) }}" alt="Clicked Image">
+                    </button>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+    <button id="next-round-button" class="next-round-button">Next Round</button>
+    <button id="reset-button" class="reset-button">Reset Game</button>
+    <span id="count-display"></span>
+    <script>
+    function loadInitialButtonState() {
+        $.ajax({
+            url: '/get_button_state', // Create a route in your Flask app to retrieve the button state
+            type: 'GET',
+            success: function (response) {
+                console.log(response)
+                var index = 0
+                response.buttons.forEach(function (button) {
+                    // console.log(button)
+                    var col = index % 5
+                    var row = button.row - 1
+                    var buttonElement = $('.button[data-row="' + row + '"][data-col="' + col + '"]');
+                    console.log("button Index: ", button.index)
+                    if (button.locked) {
+                        console.log("over here", button.index)
+                        buttonElement.find('.original-image').hide();
+                        buttonElement.find('.clicked-image').show();
+                    }
+                    index++;
+                });
+            },
+            error: function (error) {
+                console.log(error);
+            }
+        });
+    }
+    loadInitialButtonState()
+
+    function buttonClicked(button) {
+        $.ajax({
+            url: '/get_index_locked_buttons', // Route in your Flask app to retrieve the button state
+            type: 'GET',
+            success: function (response) {
+                var buttonElement = $(button);
+                var row = buttonElement.data('row');
+                var clickedIndex = buttonElement.data('button_index'); 
+                var indexes = new Set(response.index); 
+                var buttonsInRow = $('.button[data-row="' + row + '"]');
+
+                buttonsInRow.each(function() {
+                    var currentIndex = $(this).data('button_index'); // Ensure currentIndex is a number
+                    var originalImage = $(this).find('.original-image');
+                    var clickedImage = $(this).find('.clicked-image');
+                    if (currentIndex === clickedIndex) {
+                        originalImage.hide(); 
+                        clickedImage.show();
+                    } else if (!indexes.has(currentIndex)) {
+                        originalImage.show();
+                        clickedImage.hide();
+                    } else {
+                        $(this).addClass('disabled'); // Add a disabled class to the button
+                    }
+                });
+            }
+        });
+    }
+
+     $(document).ready(function() {
+       var isRequestInProgress = false;
+
+
+       $('.button').click(function () {
+         if (isRequestInProgress) {
+           return false;
+         }
+
+         var row = $(this).data('row');
+         var col = $(this).data('col');
+         var buttonIndex = row * 5 + col;
+         var buttonElement = $(this);
+
+         isRequestInProgress = true;
+
+         $.ajax({
+           url: '/update_array',
+           type: 'POST',
+           data: {button_index: buttonIndex},
+           success: function (response) {
+               var buttons = response.buttons
+               $('.button[data-row="' + row + '"]:not(.disabled)').removeClass('highlight');
+                for (let i = 0; i < buttons.length; i++) {
+                    const button = buttons[i];
+                    if (button.clicked) {
+                        // $('.button[data-row="' + button.row + '"][data-col="' + button.col + '"]').addClass('highlight');
+                        buttonElement.addClass('highlight');
+                    }
+                }
+           },
+           error: function (error) {
+             console.log(error);
+           },
+           complete: function () {
+             isRequestInProgress = false;
+           }
+         });
+
+         return false;
+       });
+
+        $('#next-round-button').click(function() {
+            $.ajax({
+                url: '/next_round',
+                type: 'POST',
+                success: function(response) {
+                    $('#count-display').text("Count: " + response.count);
+
+                    var disableButtons = response.lock_buttons;
+
+                    $('.button').each(function(index) {
+                        const buttonElement = $(this);
+                        if (disableButtons.includes(index)) {
+                            buttonElement.prop('disabled', true);
+                            buttonElement.addClass('disabled highlight'); // Add both 'disabled' and 'highlight' classes
+                        }
+                    });
+                    response.lock_buttons.forEach(function (index) {
+                        var col = index % 5
+                        var row = Math.floor(index / 5)
+                        $('.button[data-row="' + row + '"][data-col="' + col + '"] .original-image').hide();
+                        $('.button[data-row="' + row + '"][data-col="' + col + '"] .clicked-image').show();
+                    });
+                },
+                error: function(error) {
+                    console.log(error);
+                }
+            });
+        });
+        $('#reset-button').click(function() {
+            $.ajax({
+                url: '/reset_game',
+                type: 'POST',
+                success: function(response) {
+                    $('#count-display').empty();
+                    $('.button').each(function() {
+                        var buttonElement = $(this);
+                        buttonElement.removeClass('disabled highlight'); // Remove any added classes
+                    });
+                }
+            });
+        });
+     });
+    </script>
+</body>
+</html>

@@ -49,13 +49,6 @@ class Game:
     def lock_buttons_and_count(self):
         col = -1
         for i, buttons in enumerate(self.button_array):
-            # col_checker = i % 5 == col
-            # print("####################### LINE BREAK ##########")
-            # print(i, " index")
-            # print(col, " col")
-            # print(col_checker, " Col checker")
-            # print("####################### LINE BREAK ##########")
-
             if buttons.clicked and not buttons.locked: # and not col_checker:
                 # col = i % 5
                 buttons.lockButton()
@@ -111,6 +104,18 @@ class Game:
                 button.image = 'light_blue_unclicked.png'
                 button.clicked_image = 'light_blue_clicked.png'
 
+    def set_ones_by_indices(indices):
+        # Create a list of 25 elements, all initialized to 0
+        array = [0] * 25
+        
+        # Loop through the indices list
+        for index in indices:
+            # Check if the index is within the bounds of the 25-element list
+            if 0 <= index < 25:
+                # Set the element at this index to 1
+                array[index] = 1
+                
+        return array
     # def update_locked_buttons(self):
     #     for index, button in self.button_array:
     #         if button.locked:

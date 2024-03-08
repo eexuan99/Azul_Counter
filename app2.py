@@ -36,12 +36,7 @@ def get_button_state():
 @app.route('/get_index_locked_buttons', methods=['GET'])
 def get_index_locked_buttons():
     locked_buttons = game.get_locked_buttons()
-    locked_buttons_list = [locked_buttons[i:i + 5] for i in range(0, len(locked_buttons), 5)]
-    print("over hereS")
-    print(locked_buttons)
-    print(locked_buttons_list)
-
-    return jsonify(success=True, index=locked_buttons_list)
+    return jsonify(success=True, index=locked_buttons)
 
     # def next_rount(self):
     #     # get indexes
